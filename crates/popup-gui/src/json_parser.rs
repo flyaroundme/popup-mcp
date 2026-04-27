@@ -49,7 +49,10 @@ mod tests {
 
         let result = parse_popup_json(json);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing field `title`"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing field `title`"));
     }
 
     #[test]
@@ -60,6 +63,9 @@ mod tests {
 
         let result = parse_popup_json(json);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing field `elements`"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing field `elements`"));
     }
 }

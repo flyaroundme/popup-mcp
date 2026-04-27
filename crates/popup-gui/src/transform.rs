@@ -65,8 +65,7 @@ fn inject_other_option(
 
     // Check if "Other" already exists (case-insensitive)
     let has_other = options.iter().any(|opt| {
-        opt.value().eq_ignore_ascii_case("other")
-            || opt.value().eq_ignore_ascii_case(OTHER_LABEL)
+        opt.value().eq_ignore_ascii_case("other") || opt.value().eq_ignore_ascii_case(OTHER_LABEL)
     });
 
     if !has_other {
@@ -264,15 +263,13 @@ mod tests {
         let transformed = inject_other_options(def);
 
         match &transformed.elements[0] {
-            Element::Check { reveals, .. } => {
-                match &reveals[0] {
-                    Element::Multi { options, .. } => {
-                        assert_eq!(options.len(), 2);
-                        assert_eq!(options[1].value(), "Other (please specify)");
-                    }
-                    _ => panic!("Expected Multi element in reveals"),
+            Element::Check { reveals, .. } => match &reveals[0] {
+                Element::Multi { options, .. } => {
+                    assert_eq!(options.len(), 2);
+                    assert_eq!(options[1].value(), "Other (please specify)");
                 }
-            }
+                _ => panic!("Expected Multi element in reveals"),
+            },
             _ => panic!("Expected Check element"),
         }
     }
@@ -357,15 +354,13 @@ mod tests {
         let transformed = inject_other_options(def);
 
         match &transformed.elements[0] {
-            Element::Group { elements, .. } => {
-                match &elements[0] {
-                    Element::Multi { options, .. } => {
-                        assert_eq!(options.len(), 2);
-                        assert_eq!(options[1].value(), "Other (please specify)");
-                    }
-                    _ => panic!("Expected Multi element in group"),
+            Element::Group { elements, .. } => match &elements[0] {
+                Element::Multi { options, .. } => {
+                    assert_eq!(options.len(), 2);
+                    assert_eq!(options[1].value(), "Other (please specify)");
                 }
-            }
+                _ => panic!("Expected Multi element in group"),
+            },
             _ => panic!("Expected Group element"),
         }
     }

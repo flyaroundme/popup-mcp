@@ -1,7 +1,7 @@
 use crate::{Element, OptionValue};
 use serde::de::{self, MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::ser::SerializeMap;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
@@ -61,7 +61,7 @@ impl From<PolyChildren> for Vec<Element> {
 
 fn label_to_snake_case(label: &str) -> String {
     let mut result = String::new();
-    let mut prev_separator = true; 
+    let mut prev_separator = true;
     let mut prev_upper = false;
 
     let chars: Vec<char> = label.chars().collect();
@@ -110,81 +110,164 @@ impl<'de> Visitor<'de> for ElementVisitor {
         // We need to inspect keys to determine the variant (discriminator)
         // and also collect unknown keys for option-as-key children.
         let mut obj: serde_json::Map<String, Value> = serde_json::Map::new();
-        
+
         while let Some((key, value)) = map.next_entry()? {
             obj.insert(key, value);
         }
 
         // 2. Identify the Variant
         if let Some(text_val) = obj.remove("text") {
-            let text = text_val.as_str().ok_or_else(|| de::Error::custom("text must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()));
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
+            let text = text_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("text must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
             return Ok(Element::Text { text, id, when });
         }
 
         if let Some(md_val) = obj.remove("markdown") {
-            let markdown = md_val.as_str().ok_or_else(|| de::Error::custom("markdown must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()));
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
+            let markdown = md_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("markdown must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
             return Ok(Element::Markdown { markdown, id, when });
         }
 
         if let Some(lbl_val) = obj.remove("slider") {
-            let slider = lbl_val.as_str().ok_or_else(|| de::Error::custom("slider must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()))
+            let slider = lbl_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("slider must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
                 .unwrap_or_else(|| label_to_snake_case(&slider));
-            
-            let min = obj.remove("min").and_then(|v| v.as_f64()).ok_or_else(|| de::Error::custom("missing min"))? as f32;
-            let max = obj.remove("max").and_then(|v| v.as_f64()).ok_or_else(|| de::Error::custom("missing max"))? as f32;
-            let default = obj.remove("default").and_then(|v| v.as_f64().map(|f| f as f32));
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
 
-            return Ok(Element::Slider { slider, id, min, max, default, when });
+            let min = obj
+                .remove("min")
+                .and_then(|v| v.as_f64())
+                .ok_or_else(|| de::Error::custom("missing min"))? as f32;
+            let max = obj
+                .remove("max")
+                .and_then(|v| v.as_f64())
+                .ok_or_else(|| de::Error::custom("missing max"))? as f32;
+            let default = obj
+                .remove("default")
+                .and_then(|v| v.as_f64().map(|f| f as f32));
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+            return Ok(Element::Slider {
+                slider,
+                id,
+                min,
+                max,
+                default,
+                when,
+            });
         }
 
         if let Some(lbl_val) = obj.remove("check") {
-            let check = lbl_val.as_str().ok_or_else(|| de::Error::custom("check must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()))
+            let check = lbl_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("check must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
                 .unwrap_or_else(|| label_to_snake_case(&check));
-            let default = obj.remove("default").and_then(|v| v.as_bool()).unwrap_or(false);
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
-            
+            let default = obj
+                .remove("default")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+
             let reveals = if let Some(rev_val) = obj.remove("reveals") {
-                let pc: PolyChildren = serde_json::from_value(rev_val).map_err(de::Error::custom)?;
+                let pc: PolyChildren =
+                    serde_json::from_value(rev_val).map_err(de::Error::custom)?;
                 pc.into()
             } else {
                 Vec::new()
             };
 
-            return Ok(Element::Check { check, id, default, reveals, when });
+            return Ok(Element::Check {
+                check,
+                id,
+                default,
+                reveals,
+                when,
+            });
         }
 
         if let Some(lbl_val) = obj.remove("input") {
-            let input = lbl_val.as_str().ok_or_else(|| de::Error::custom("input must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()))
+            let input = lbl_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("input must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
                 .unwrap_or_else(|| label_to_snake_case(&input));
-            let placeholder = obj.remove("placeholder").and_then(|v| v.as_str().map(|s| s.to_string()));
-            let rows = obj.remove("rows").and_then(|v| v.as_u64().map(|u| u as u32));
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
+            let placeholder = obj
+                .remove("placeholder")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+            let rows = obj
+                .remove("rows")
+                .and_then(|v| v.as_u64().map(|u| u as u32));
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
 
-            return Ok(Element::Input { input, id, placeholder, rows, when });
+            return Ok(Element::Input {
+                input,
+                id,
+                placeholder,
+                rows,
+                when,
+            });
         }
 
         if let Some(lbl_val) = obj.remove("select") {
-            let select = lbl_val.as_str().ok_or_else(|| de::Error::custom("select must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()))
+            let select = lbl_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("select must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
                 .unwrap_or_else(|| label_to_snake_case(&select));
-            
-            let opts_val = obj.remove("options").ok_or_else(|| de::Error::custom("missing options"))?;
+
+            let opts_val = obj
+                .remove("options")
+                .ok_or_else(|| de::Error::custom("missing options"))?;
             let options: Vec<OptionValue> = serde_json::from_value::<PolyOptions>(opts_val)
-                .map_err(de::Error::custom)?.into();
-            
-            let default = obj.remove("default").and_then(|v| v.as_str().map(|s| s.to_string()));
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
+                .map_err(de::Error::custom)?
+                .into();
+
+            let default = obj
+                .remove("default")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
 
             let reveals = if let Some(rev_val) = obj.remove("reveals") {
-                let pc: PolyChildren = serde_json::from_value(rev_val).map_err(de::Error::custom)?;
+                let pc: PolyChildren =
+                    serde_json::from_value(rev_val).map_err(de::Error::custom)?;
                 pc.into()
             } else {
                 Vec::new()
@@ -199,27 +282,47 @@ impl<'de> Visitor<'de> for ElementVisitor {
             for (key, val) in obj {
                 if valid_options.contains(&key.as_str()) {
                     let children: Vec<Element> = serde_json::from_value::<PolyChildren>(val)
-                        .map_err(de::Error::custom)?.into();
+                        .map_err(de::Error::custom)?
+                        .into();
                     option_children.insert(key, children);
                 }
             }
 
-            return Ok(Element::Select { select, id, options, default, option_children, reveals, when });
+            return Ok(Element::Select {
+                select,
+                id,
+                options,
+                default,
+                option_children,
+                reveals,
+                when,
+            });
         }
 
         if let Some(lbl_val) = obj.remove("multi") {
-            let multi = lbl_val.as_str().ok_or_else(|| de::Error::custom("multi must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()))
+            let multi = lbl_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("multi must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
                 .unwrap_or_else(|| label_to_snake_case(&multi));
-            
-            let opts_val = obj.remove("options").ok_or_else(|| de::Error::custom("missing options"))?;
+
+            let opts_val = obj
+                .remove("options")
+                .ok_or_else(|| de::Error::custom("missing options"))?;
             let options: Vec<OptionValue> = serde_json::from_value::<PolyOptions>(opts_val)
-                .map_err(de::Error::custom)?.into();
-            
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
+                .map_err(de::Error::custom)?
+                .into();
+
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
 
             let reveals = if let Some(rev_val) = obj.remove("reveals") {
-                let pc: PolyChildren = serde_json::from_value(rev_val).map_err(de::Error::custom)?;
+                let pc: PolyChildren =
+                    serde_json::from_value(rev_val).map_err(de::Error::custom)?;
                 pc.into()
             } else {
                 Vec::new()
@@ -232,25 +335,48 @@ impl<'de> Visitor<'de> for ElementVisitor {
             for (key, val) in obj {
                 if valid_options.contains(&key.as_str()) {
                     let children: Vec<Element> = serde_json::from_value::<PolyChildren>(val)
-                        .map_err(de::Error::custom)?.into();
+                        .map_err(de::Error::custom)?
+                        .into();
                     option_children.insert(key, children);
                 }
             }
 
-            return Ok(Element::Multi { multi, id, options, option_children, reveals, when });
+            return Ok(Element::Multi {
+                multi,
+                id,
+                options,
+                option_children,
+                reveals,
+                when,
+            });
         }
 
         if let Some(lbl_val) = obj.remove("group") {
-            let group = lbl_val.as_str().ok_or_else(|| de::Error::custom("group must be string"))?.to_string();
-            let id = obj.remove("id").and_then(|v| v.as_str().map(|s| s.to_string()));
-            let when = obj.remove("when").and_then(|v| v.as_str().map(|s| s.to_string()));
-            
-            let elems_val = obj.remove("elements").ok_or_else(|| de::Error::custom("group missing elements"))?;
+            let group = lbl_val
+                .as_str()
+                .ok_or_else(|| de::Error::custom("group must be string"))?
+                .to_string();
+            let id = obj
+                .remove("id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+            let when = obj
+                .remove("when")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+            let elems_val = obj
+                .remove("elements")
+                .ok_or_else(|| de::Error::custom("group missing elements"))?;
             // Groups must have array elements, but let's be kind and use PolyChildren just in case single object is passed
             let elements: Vec<Element> = serde_json::from_value::<PolyChildren>(elems_val)
-                .map_err(de::Error::custom)?.into();
+                .map_err(de::Error::custom)?
+                .into();
 
-            return Ok(Element::Group { group, id, elements, when });
+            return Ok(Element::Group {
+                group,
+                id,
+                elements,
+                when,
+            });
         }
 
         Err(de::Error::custom("Unknown element type"))
@@ -276,77 +402,158 @@ impl Serialize for Element {
         // ... (Copy existing serialize logic or just delegate to a struct if we want)
         // For now, let's just do a manual map serialization again to be safe and self-contained
         // (Assuming you want this file to be fully self-contained replacement)
-        
+
         match self {
             Element::Text { text, id, when } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("text", text)?;
-                if let Some(v) = id { map.serialize_entry("id", v)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if let Some(v) = id {
+                    map.serialize_entry("id", v)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
             Element::Markdown { markdown, id, when } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("markdown", markdown)?;
-                if let Some(v) = id { map.serialize_entry("id", v)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if let Some(v) = id {
+                    map.serialize_entry("id", v)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
-            Element::Slider { slider, id, min, max, default, when } => {
+            Element::Slider {
+                slider,
+                id,
+                min,
+                max,
+                default,
+                when,
+            } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("slider", slider)?;
                 map.serialize_entry("id", id)?;
                 map.serialize_entry("min", min)?;
                 map.serialize_entry("max", max)?;
-                if let Some(v) = default { map.serialize_entry("default", v)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if let Some(v) = default {
+                    map.serialize_entry("default", v)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
-            Element::Check { check, id, default, reveals, when } => {
+            Element::Check {
+                check,
+                id,
+                default,
+                reveals,
+                when,
+            } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("check", check)?;
                 map.serialize_entry("id", id)?;
-                if *default { map.serialize_entry("default", default)?; }
-                if !reveals.is_empty() { map.serialize_entry("reveals", reveals)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if *default {
+                    map.serialize_entry("default", default)?;
+                }
+                if !reveals.is_empty() {
+                    map.serialize_entry("reveals", reveals)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
-            Element::Input { input, id, placeholder, rows, when } => {
+            Element::Input {
+                input,
+                id,
+                placeholder,
+                rows,
+                when,
+            } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("input", input)?;
                 map.serialize_entry("id", id)?;
-                if let Some(v) = placeholder { map.serialize_entry("placeholder", v)?; }
-                if let Some(v) = rows { map.serialize_entry("rows", v)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if let Some(v) = placeholder {
+                    map.serialize_entry("placeholder", v)?;
+                }
+                if let Some(v) = rows {
+                    map.serialize_entry("rows", v)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
-            Element::Multi { multi, id, options, option_children, reveals, when } => {
+            Element::Multi {
+                multi,
+                id,
+                options,
+                option_children,
+                reveals,
+                when,
+            } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("multi", multi)?;
                 map.serialize_entry("id", id)?;
                 map.serialize_entry("options", options)?;
-                for (k, v) in option_children { map.serialize_entry(k, v)?; }
-                if !reveals.is_empty() { map.serialize_entry("reveals", reveals)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                for (k, v) in option_children {
+                    map.serialize_entry(k, v)?;
+                }
+                if !reveals.is_empty() {
+                    map.serialize_entry("reveals", reveals)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
-            Element::Select { select, id, options, default, option_children, reveals, when } => {
+            Element::Select {
+                select,
+                id,
+                options,
+                default,
+                option_children,
+                reveals,
+                when,
+            } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("select", select)?;
                 map.serialize_entry("id", id)?;
                 map.serialize_entry("options", options)?;
-                if let Some(v) = default { map.serialize_entry("default", v)?; }
-                for (k, v) in option_children { map.serialize_entry(k, v)?; }
-                if !reveals.is_empty() { map.serialize_entry("reveals", reveals)?; }
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if let Some(v) = default {
+                    map.serialize_entry("default", v)?;
+                }
+                for (k, v) in option_children {
+                    map.serialize_entry(k, v)?;
+                }
+                if !reveals.is_empty() {
+                    map.serialize_entry("reveals", reveals)?;
+                }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
-            Element::Group { group, id, elements, when } => {
+            Element::Group {
+                group,
+                id,
+                elements,
+                when,
+            } => {
                 let mut map = serializer.serialize_map(None)?;
                 map.serialize_entry("group", group)?;
-                if let Some(v) = id { map.serialize_entry("id", v)?; }
+                if let Some(v) = id {
+                    map.serialize_entry("id", v)?;
+                }
                 map.serialize_entry("elements", elements)?;
-                if let Some(v) = when { map.serialize_entry("when", v)?; }
+                if let Some(v) = when {
+                    map.serialize_entry("when", v)?;
+                }
                 map.end()
             }
         }
@@ -775,7 +982,9 @@ mod tests {
         }"#;
         let elem: Element = serde_json::from_str(json).unwrap();
         match elem {
-            Element::Select { option_children, .. } => {
+            Element::Select {
+                option_children, ..
+            } => {
                 let children = option_children.get("A").unwrap();
                 assert_eq!(children.len(), 1);
                 match &children[0] {
@@ -796,7 +1005,9 @@ mod tests {
         }"#;
         let elem: Element = serde_json::from_str(json).unwrap();
         match elem {
-            Element::Select { option_children, .. } => {
+            Element::Select {
+                option_children, ..
+            } => {
                 let children = option_children.get("B").unwrap();
                 assert_eq!(children.len(), 1);
                 match &children[0] {

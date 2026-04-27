@@ -1,6 +1,8 @@
 use anyhow::Result;
 use eframe::egui;
-use egui::{CentralPanel, Color32, Context, Id, Key, Rect, RichText, ScrollArea, TopBottomPanel, Vec2};
+use egui::{
+    CentralPanel, Color32, Context, Id, Key, Rect, RichText, ScrollArea, TopBottomPanel, Vec2,
+};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -62,7 +64,7 @@ pub fn render_popup(definition: PopupDefinition) -> Result<PopupResult> {
     let result_clone = result.clone();
 
     let title = definition.effective_title().to_string();
-    
+
     // Start wider if we have multiple elements to encourage 2-column layout immediately
     let initial_size = if definition.elements.len() > 1 {
         [650.0, 400.0]
@@ -76,7 +78,8 @@ pub fn render_popup(definition: PopupDefinition) -> Result<PopupResult> {
             .with_inner_size(initial_size)
             // Allow the window to be resized by the user
             .with_resizable(true)
-            .with_position(egui::Pos2::new(100.0, 100.0)), // Will center manually if needed
+            .with_position(egui::Pos2::new(100.0, 100.0)) // Will center manually if needed
+            .with_always_on_top(),
         ..Default::default()
     };
 
@@ -163,8 +166,12 @@ impl eframe::App for PopupApp {
         // Apply theme
         self.theme.apply_to_egui(ctx);
 
-        // Handle Escape key for cancel
-        if ctx.input(|i| i.key_pressed(Key::Escape)) {
+        if self.frame_count == 1 {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+
+        // Handle Escape key and cross sign for cancel
+        if ctx.input(|i| i.key_pressed(Key::Escape) || i.viewport().close_requested()) {
             self.state.button_clicked = Some("cancel".to_string());
         }
 
@@ -199,45 +206,46 @@ impl eframe::App for PopupApp {
         let bottom_panel_height = bottom_panel_response.response.rect.height();
 
         // Render the main content and measure its size
-        CentralPanel::default()
-            .show(ctx, |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             // Add outer margin manually using a frame
             egui::Frame::NONE
                 .inner_margin(egui::Margin::same(10))
                 .show(ui, |ui| {
-            // Improved spacing for better readability
-            ui.spacing_mut().item_spacing = Vec2::new(8.0, 6.0);
-            ui.spacing_mut().button_padding = Vec2::new(10.0, 6.0);
-            ui.spacing_mut().indent = 12.0;
+                    // Improved spacing for better readability
+                    ui.spacing_mut().item_spacing = Vec2::new(8.0, 6.0);
+                    ui.spacing_mut().button_padding = Vec2::new(10.0, 6.0);
+                    ui.spacing_mut().indent = 12.0;
 
-            ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    // Use a scope to measure the content rect
-                    let content_response = ui.scope(|ui| {
-                        let mut render_ctx = RenderContext {
-                            theme: &self.theme,
-                            first_widget_id: &mut self.first_interactive_widget_id,
-                            widget_focused: self.first_widget_focused,
-                            markdown_cache: &mut self.markdown_cache,
-                            condition_cache: &mut self.condition_cache,
-                        };
-                        render_elements_in_grid(
-                            ui,
-                            &self.definition.elements,
-                            &mut self.state,
-                            &self.definition.elements,
-                            &mut render_ctx,
-                            "",
-                        );
-                    });
-                    // Store the measured rect in temporary memory to access it after the panel is drawn
-                    ctx.memory_mut(|mem| {
-                        mem.data
-                            .insert_temp("content_rect".into(), content_response.response.rect)
-                    });
+                    ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            // Use a scope to measure the content rect
+                            let content_response = ui.scope(|ui| {
+                                let mut render_ctx = RenderContext {
+                                    theme: &self.theme,
+                                    first_widget_id: &mut self.first_interactive_widget_id,
+                                    widget_focused: self.first_widget_focused,
+                                    markdown_cache: &mut self.markdown_cache,
+                                    condition_cache: &mut self.condition_cache,
+                                };
+                                render_elements_in_grid(
+                                    ui,
+                                    &self.definition.elements,
+                                    &mut self.state,
+                                    &self.definition.elements,
+                                    &mut render_ctx,
+                                    "",
+                                );
+                            });
+                            // Store the measured rect in temporary memory to access it after the panel is drawn
+                            ctx.memory_mut(|mem| {
+                                mem.data.insert_temp(
+                                    "content_rect".into(),
+                                    content_response.response.rect,
+                                )
+                            });
+                        });
                 });
-            });
         });
 
         // --- Phase 2: Calculate Desired Size and Resize ---
@@ -255,30 +263,33 @@ impl eframe::App for PopupApp {
 
         // Calculate a "preferred" width based on the complexity of the visible elements
         // This helps break the circular dependency where desired_width is constrained by current width.
-        let visible_item_count = self.definition.elements.iter().filter(|e| {
-             let when = match e {
-                Element::Text { when, .. } => when,
-                Element::Markdown { when, .. } => when,
-                Element::Slider { when, .. } => when,
-                Element::Check { when, .. } => when,
-                Element::Input { when, .. } => when,
-                Element::Multi { when, .. } => when,
-                Element::Select { when, .. } => when,
-                Element::Group { when, .. } => when,
-            };
-            if let Some(w) = when {
-                let state_map = self.state.to_value_map(&self.definition.elements);
-                parse_condition(w).map(|ast| evaluate_condition(&ast, &state_map)).unwrap_or(true)
-            } else {
-                true
-            }
-        }).count();
+        let visible_item_count = self
+            .definition
+            .elements
+            .iter()
+            .filter(|e| {
+                let when = match e {
+                    Element::Text { when, .. } => when,
+                    Element::Markdown { when, .. } => when,
+                    Element::Slider { when, .. } => when,
+                    Element::Check { when, .. } => when,
+                    Element::Input { when, .. } => when,
+                    Element::Multi { when, .. } => when,
+                    Element::Select { when, .. } => when,
+                    Element::Group { when, .. } => when,
+                };
+                if let Some(w) = when {
+                    let state_map = self.state.to_value_map(&self.definition.elements);
+                    parse_condition(w)
+                        .map(|ast| evaluate_condition(&ast, &state_map))
+                        .unwrap_or(true)
+                } else {
+                    true
+                }
+            })
+            .count();
 
-        let mut preferred_width = if visible_item_count > 1 {
-            650.0
-        } else {
-            400.0
-        };
+        let mut preferred_width = if visible_item_count > 1 { 650.0 } else { 400.0 };
 
         // If it's getting very tall, push the width out to encourage 2-column layout
         if desired_height > 500.0 && visible_item_count > 2 {
@@ -364,16 +375,17 @@ fn render_elements_in_grid(
         };
 
         let is_visible = if let Some(when_expr) = when_clause {
-            let cached_expr = ctx.condition_cache
+            let cached_expr = ctx
+                .condition_cache
                 .entry(when_expr.clone())
                 .or_insert_with(|| parse_condition(when_expr).ok());
-            
+
             match cached_expr {
                 Some(ast) => evaluate_condition(ast, &state_values),
                 None => {
                     log::warn!("Failed to parse when clause: {}", when_expr);
                     true // fail-open
-                },
+                }
             }
         } else {
             true
@@ -481,10 +493,14 @@ fn render_elements_in_grid(
             );
 
             // Vertical Divider (Solarized Violet - IDE split style)
-            let height = left_res.response.rect.height().max(right_res.response.rect.height());
+            let height = left_res
+                .response
+                .rect
+                .height()
+                .max(right_res.response.rect.height());
             let center_x = sep_rect.center().x;
             let top_y = sep_rect.top();
-            
+
             ui.painter().vline(
                 center_x,
                 top_y..=(top_y + height),
@@ -519,7 +535,8 @@ fn render_item_group(
     path_prefix: &str,
 ) {
     let first_idx = item_indices[0];
-    let is_simple_checkbox = matches!(&elements[first_idx], Element::Check { reveals, .. } if reveals.is_empty());
+    let is_simple_checkbox =
+        matches!(&elements[first_idx], Element::Check { reveals, .. } if reveals.is_empty());
 
     if is_simple_checkbox {
         ui.horizontal_wrapped(|ui| {
@@ -568,17 +585,18 @@ fn render_single_element(
 
     if let Some(when_expr) = when_clause {
         let state_values = state.to_value_map(all_elements);
-        let cached_expr = ctx.condition_cache
+        let cached_expr = ctx
+            .condition_cache
             .entry(when_expr.clone())
             .or_insert_with(|| parse_condition(when_expr).ok());
-        
+
         match cached_expr {
             Some(ast) => {
                 if !evaluate_condition(ast, &state_values) {
                     // Condition not met - don't render this element
                     return;
                 }
-            },
+            }
             None => {
                 // Log warning but render anyway (fail-open)
                 log::warn!("Failed to parse when clause: {}", when_expr);
@@ -655,13 +673,19 @@ fn render_single_element(
                                             selections[i] = value;
 
                                             // Separate wrapped label
-                                            ui.label(RichText::new(option.value()).color(ctx.theme.matrix_green));
+                                            ui.label(
+                                                RichText::new(option.value())
+                                                    .color(ctx.theme.matrix_green),
+                                            );
 
                                             if let Some(desc) = option.description() {
                                                 response.clone().on_hover_text(desc);
                                             }
 
-                                            if ctx.first_widget_id.is_none() && !ctx.widget_focused && i == 0 {
+                                            if ctx.first_widget_id.is_none()
+                                                && !ctx.widget_focused
+                                                && i == 0
+                                            {
                                                 *ctx.first_widget_id = Some(response.id);
                                             }
                                         });
@@ -678,7 +702,7 @@ fn render_single_element(
                 } else {
                     vec![]
                 };
-// ... (rest of Multi logic)
+                // ... (rest of Multi logic)
                 for (i, option) in options.iter().enumerate() {
                     if i < selections_snapshot.len() && selections_snapshot[i] {
                         if let Some(children) = option_children.get(option.value()) {
@@ -713,7 +737,7 @@ fn render_single_element(
         }
 
         Element::Select {
-// ... (omitting Select for now as it's fine)
+            // ... (omitting Select for now as it's fine)
             select,
             id,
             options,
@@ -726,7 +750,11 @@ fn render_single_element(
                     let label_width = 140.0;
                     ui.add_sized(
                         [label_width, 24.0],
-                        egui::Label::new(RichText::new(select).color(ctx.theme.electric_blue).strong()),
+                        egui::Label::new(
+                            RichText::new(select)
+                                .color(ctx.theme.electric_blue)
+                                .strong(),
+                        ),
                     );
 
                     if let Some(selected) = state.get_choice_mut(id) {
@@ -782,7 +810,14 @@ fn render_single_element(
 
                 if selected_option.is_some() && !reveals.is_empty() {
                     ui.indent(format!("choice_reveals_{}", id), |ui| {
-                        render_elements_in_grid(ui, reveals, state, all_elements, ctx, element_path);
+                        render_elements_in_grid(
+                            ui,
+                            reveals,
+                            state,
+                            all_elements,
+                            ctx,
+                            element_path,
+                        );
                     });
                 }
             });
@@ -1098,5 +1133,3 @@ fn collect_active_elements(
 
     active_ids
 }
-
-

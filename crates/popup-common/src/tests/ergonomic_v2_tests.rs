@@ -35,13 +35,19 @@ fn test_ergonomic_macro_usage() {
     // We need to parse the full definition, but Element is internal to the crate.
     // So we test Element deserialization directly.
     let elements_json = json_input["elements"].clone();
-    let elements: Vec<Element> = serde_json::from_value(elements_json).expect("Failed to deserialize ergonomic elements");
+    let elements: Vec<Element> =
+        serde_json::from_value(elements_json).expect("Failed to deserialize ergonomic elements");
 
     assert_eq!(elements.len(), 3);
 
     // Verify Element 1: Select
     match &elements[0] {
-        Element::Select { select, id, options, .. } => {
+        Element::Select {
+            select,
+            id,
+            options,
+            ..
+        } => {
             assert_eq!(select, "Choose Flavor");
             assert_eq!(id, "choose_flavor");
             assert_eq!(options.len(), 3);
@@ -52,7 +58,11 @@ fn test_ergonomic_macro_usage() {
 
     // Verify Element 2: Multi with Implicit Text Child
     match &elements[1] {
-        Element::Multi { multi, option_children, .. } => {
+        Element::Multi {
+            multi,
+            option_children,
+            ..
+        } => {
             assert_eq!(multi, "Toppings");
             assert!(option_children.contains_key("Sauce"));
             let children = &option_children["Sauce"];

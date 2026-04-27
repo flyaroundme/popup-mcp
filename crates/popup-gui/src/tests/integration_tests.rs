@@ -176,9 +176,7 @@ fn test_auto_other_option() {
         ]
     }"#;
 
-    let popup = parse_popup_json(json)
-        .map(inject_other_options)
-        .unwrap();
+    let popup = parse_popup_json(json).map(inject_other_options).unwrap();
 
     // Verify Multi has "Other" option
     match &popup.elements[0] {
