@@ -171,7 +171,7 @@ impl eframe::App for PopupApp {
         }
 
         // Handle Escape key and cross sign for cancel
-        if ctx.input(|i| i.key_pressed(Key::Escape) || i.viewport().close_requested()) {
+        if ctx.input(|i| i.key_pressed(Key::Escape)) {
             self.state.button_clicked = Some("cancel".to_string());
         }
 
