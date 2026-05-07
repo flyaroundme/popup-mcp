@@ -6,12 +6,41 @@ Create rich dialogue trees with form elements (text, sliders, checkboxes, dropdo
 
 ## Installation
 
+Unfortunately you need cargo to do that (get cargo as a part of rust installer here: https://rustup.rs/)
+
 ```bash
 # Clone and install
-git clone https://github.com/inanna-malick/popup-mcp.git
+git clone git@github.com:flyaroundme/popup-mcp.git
 cd popup-mcp
 cargo install --path crates/popup-gui
 ```
+
+## Install in OpenCode
+
+Add it to your OpenCode MCP config. Depending on your local setup, edit either:
+- ~/.config/opencode/opencode.json
+- or your local OpenCode config under ~/.opencode/
+Add this MCP entry:
+{
+  "mcp": {
+    "popup": {
+      "type": "local",
+      "command": ["popup"]
+    }
+  }
+}
+If popup is not available on your PATH, use the full path instead:
+{
+  "mcp": {
+    "popup": {
+      "type": "local",
+      "command": ["/Users/YOUR_USER/.cargo/bin/popup"]
+    }
+  }
+}
+Restart OpenCode after saving the config. The popup MCP tool should then be available for native GUI popups.
+Note: for this project, OpenCode should run `popup` with no extra arguments because MCP server mode is the default.
+
 
 ## Setup with Claude Desktop
 
