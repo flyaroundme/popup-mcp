@@ -21,6 +21,7 @@ Add it to your OpenCode MCP config. Depending on your local setup, edit either:
 - ~/.config/opencode/opencode.json
 - or your local OpenCode config under ~/.opencode/
 Add this MCP entry:
+```
 {
   "mcp": {
     "popup": {
@@ -29,7 +30,9 @@ Add this MCP entry:
     }
   }
 }
+```
 If popup is not available on your PATH, use the full path instead:
+```
 {
   "mcp": {
     "popup": {
@@ -38,6 +41,7 @@ If popup is not available on your PATH, use the full path instead:
     }
   }
 }
+```
 Restart OpenCode after saving the config. The popup MCP tool should then be available for native GUI popups.
 Note: for this project, OpenCode should run `popup` with no extra arguments because MCP server mode is the default.
 
